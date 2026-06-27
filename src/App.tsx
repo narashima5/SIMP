@@ -3,18 +3,17 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import Login from '@/pages/Login';
+import Register from '@/pages/Register';
 import StudentDashboard from '@/pages/StudentDashboard';
 import CoordinatorDashboard from '@/pages/CoordinatorDashboard';
 import OrganizationDashboard from '@/pages/OrganizationDashboard';
 import AdminDashboard from '@/pages/AdminDashboard';
+import InternshipListing from '@/pages/InternshipListing';
+import ApplicationDetails from '@/pages/ApplicationDetails';
+import ProgressReport from '@/pages/ProgressReport';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import { Box, Card, CardContent, Typography } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
-
-// Protected Route wrapper
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
-};
 
 // Route wrapper to handle redirect if user is already logged in
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -51,7 +50,7 @@ const MockPage: React.FC<{ title: string }> = ({ title }) => {
             {title} Page
           </Typography>
           <Typography variant="body2" sx={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            This section is part of the development setup layout for the Smart Internship Management Platform. In a production environment, this page will render live databases and forms matching your coordinator or user credentials.
+            This section is part of the development setup layout for the Smart Internship Management Platform. In a production environment, this page will render live databases and forms matching your credentials.
           </Typography>
         </CardContent>
       </Card>
@@ -63,7 +62,7 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Public Route */}
+        {/* Public Routes */}
         <Route
           path="/login"
           element={
@@ -72,8 +71,16 @@ function App() {
             </PublicRoute>
           }
         />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          }
+        />
 
-        {/* Protected Routes */}
+        {/* Protected Routes Wrapper */}
         <Route
           path="/"
           element={
@@ -85,25 +92,119 @@ function App() {
           {/* Main home dashboard renders dynamically based on role */}
           <Route index element={<RoleDashboardRouter />} />
 
-          {/* Student Subroutes */}
-          <Route path="logs" element={<MockPage title="Student Weekly Logsheets" />} />
-          <Route path="search" element={<MockPage title="Internship Search & Listings" />} />
-          <Route path="profile" element={<MockPage title="Student Profile & Settings" />} />
+          {/* Student Specific Subroutes */}
+          <Route
+            path="logs"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'coordinator']}>
+                <ProgressReport />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="search"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <InternshipListing />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <MockPage title="Student Profile & Settings" />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Coordinator Subroutes */}
-          <Route path="approve-logs" element={<CoordinatorDashboard />} /> {/* Reuse pending logs view */}
-          <Route path="roster" element={<MockPage title="Student Academic Roster" />} />
-          <Route path="partners" element={<MockPage title="Corporate Partner Listings" />} />
+          {/* Coordinator Specific Subroutes */}
+          <Route
+            path="approve-logs"
+            element={
+              <ProtectedRoute allowedRoles={['coordinator']}>
+                <ProgressReport />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="roster"
+            element={
+              <ProtectedRoute allowedRoles={['coordinator']}>
+                <MockPage title="Student Academic Roster" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="partners"
+            element={
+              <ProtectedRoute allowedRoles={['coordinator']}>
+                <MockPage title="Corporate Partner Listings" />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Organization Subroutes */}
-          <Route path="interns" element={<MockPage title="Placed Student Interns" />} />
-          <Route path="postings" element={<MockPage title="Active Vacancy Postings" />} />
-          <Route path="evaluations" element={<MockPage title="Intern Performance Appraisals" />} />
+          {/* Organization Specific Subroutes */}
+          <Route
+            path="interns"
+            element={
+              <ProtectedRoute allowedRoles={['organization']}>
+                <MockPage title="Placed Student Interns" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="postings"
+            element={
+              <ProtectedRoute allowedRoles={['organization']}>
+                <InternshipListing />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="evaluations"
+            element={
+              <ProtectedRoute allowedRoles={['organization', 'coordinator']}>
+                <MockPage title="Intern Performance Appraisals" />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Admin Subroutes */}
-          <Route path="users" element={<MockPage title="User Accounts Registry" />} />
-          <Route path="system" element={<MockPage title="Platform Infrastructure Health" />} />
-          <Route path="audit" element={<MockPage title="Platform Security Audits" />} />
+          {/* Shared Application View */}
+          <Route
+            path="applications/:id"
+            element={
+              <ProtectedRoute allowedRoles={['student', 'coordinator', 'organization']}>
+                <ApplicationDetails />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin Specific Subroutes */}
+          <Route
+            path="users"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <MockPage title="User Accounts Registry" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="system"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <MockPage title="Platform Infrastructure Health" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="audit"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <MockPage title="Platform Security Audits" />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

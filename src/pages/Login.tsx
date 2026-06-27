@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth, type UserRole } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Box, Card, Typography, Grid, Container } from '@mui/material';
+import { Box, Card, Typography, Grid, Container, Button } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -124,9 +124,15 @@ export const Login: React.FC = () => {
           >
             Smart Internship Management Platform
           </Typography>
-          <Typography variant="body1" sx={{ color: 'var(--text-secondary)', maxW: '600px', mx: 'auto' }}>
+          <Typography variant="body1" sx={{ color: 'var(--text-secondary)', maxW: '600px', mx: 'auto', mb: 2 }}>
             Select your role to login automatically. The system simulates full workspace environments for testing.
           </Typography>
+          <Button
+            onClick={() => navigate('/register')}
+            sx={{ color: 'var(--primary) !important', fontWeight: 600 }}
+          >
+            Don't have an account? Register here &rarr;
+          </Button>
         </Box>
 
         <Grid container spacing={3}>
