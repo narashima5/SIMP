@@ -1,5 +1,9 @@
 @import './styles/variables.css';
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Global Resets */
 *, *::before, *::after {
   box-sizing: border-box;

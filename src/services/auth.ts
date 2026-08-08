@@ -17,6 +17,7 @@ export const authService = {
   
   logout: async () => {
     localStorage.removeItem('simp_token');
+    localStorage.removeItem('simp_refresh_token');
     localStorage.removeItem('simp_user');
     return apiClient('/auth/logout', { method: 'POST' }).catch(() => {});
   },

@@ -12,12 +12,20 @@ import InternshipListing from '@/pages/InternshipListing';
 import ApplicationDetails from '@/pages/ApplicationDetails';
 import ProgressReport from '@/pages/ProgressReport';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import Unauthorized from '@/pages/Unauthorized';
+import NotFound from '@/pages/NotFound';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { Box, Card, CardContent, Typography } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 
 // Route wrapper to handle redirect if user is already logged in
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <LoadingSpinner fullscreen />;
+  }
+  
   return !isAuthenticated ? <>{children}</> : <Navigate to="/" replace />;
 };
 
@@ -79,6 +87,7 @@ function App() {
             </PublicRoute>
           }
         />
+        <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Protected Routes Wrapper */}
         <Route
@@ -206,9 +215,12 @@ function App() {
             }
           />
 
-          {/* Fallback */}
+          {/* Fallback within Layout */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+
+        {/* Global Fallback */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>
   );

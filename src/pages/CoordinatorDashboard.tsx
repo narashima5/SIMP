@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { coordinatorService } from '@/services/coordinator';
 import {
   Box,
   Typography,
@@ -8,100 +9,167 @@ import {
   CardContent,
   Button,
   TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Chip,
+  Tabs,
+  Tab,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  LinearProgress,
   IconButton,
   Tooltip,
+  Paper,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import PeopleIcon from '@mui/icons-material/People';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
-import ApartmentIcon from '@mui/icons-material/Apartment';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import StudentCard from '@/components/StudentCard';
+import type { StudentData } from '@/components/StudentCard';
+import ApplicationTable from '@/components/ApplicationTable';
+import type { ApplicationData } from '@/components/ApplicationTable';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-interface PendingLog {
-  id: string;
-  studentName: string;
-  studentId: string;
-  week: number;
-  hours: number;
-  tasks: string;
-  challenges: string;
-}
-
-interface StudentProgress {
-  id: string;
-  name: string;
-  studentId: string;
-  company: string;
-  weeksApproved: number;
-  status: 'active' | 'completed' | 'on_hold';
+interface WeeklyReportData {
+  _id: string;
+  student: {
+    _id: string;
+    name: string;
+    studentId: string;
+  };
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  tasksCompleted: string;
+  challengesFaced: string;
+  hoursLogged: number;
+  status: 'pending' | 'approved' | 'rejected';
+  comments?: string;
 }
 
 export const CoordinatorDashboard: React.FC = () => {
   const { user } = useAuth();
+  
+  // Tab state
+  const [tabValue, setTabValue] = useState(0);
 
-  // Mock pending logs
-  const [pendingLogs, setPendingLogs] = useState<PendingLog[]>([
-    {
-      id: 'log_02',
-      studentName: 'Aravind Swamy',
-      studentId: '2023CS8042',
-      week: 2,
-      hours: 40,
-      tasks: 'Integrated AuthContext and state management for role switching.',
-      challenges: 'State syncing across tabs.',
-    },
-    {
-      id: 'log_03',
-      studentName: 'Nisha Kulkarni',
-      studentId: '2023CS8054',
-      week: 3,
-      hours: 35,
-      tasks: 'Created Figma mockups for backend administration interfaces.',
-      challenges: 'Client feedback required multiple iterations.',
-    },
-  ]);
+  // API Data states
+  const [students, setStudents] = useState<StudentData[]>([]);
+  const [reports, setReports] = useState<WeeklyReportData[]>([]);
+  const [applications, setApplications] = useState<ApplicationData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Mock student roster
-  const [students] = useState<StudentProgress[]>([
-    { id: '1', name: 'Aravind Swamy', studentId: '2023CS8042', company: 'TechCorp Solutions', weeksApproved: 1, status: 'active' },
-    { id: '2', name: 'Nisha Kulkarni', studentId: '2023CS8054', company: 'DevLabs Inc', weeksApproved: 2, status: 'active' },
-    { id: '3', name: 'Rahul Sen', studentId: '2023CS8091', company: 'InnovateX', weeksApproved: 16, status: 'completed' },
-    { id: '4', name: 'Aditi Rao', studentId: '2023CS8102', company: 'FutureTech', weeksApproved: 0, status: 'on_hold' },
-  ]);
+  // Dialog actions
+  const [selectedReport, setSelectedReport] = useState<WeeklyReportData | null>(null);
+  const [reportAction, setReportAction] = useState<'approved' | 'rejected' | null>(null);
+  const [reportFeedback, setReportFeedback] = useState('');
 
-  const [selectedLog, setSelectedLog] = useState<PendingLog | null>(null);
-  const [feedback, setFeedback] = useState('');
-  const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
+  const [selectedApp, setSelectedApp] = useState<ApplicationData | null>(null);
+  const [appFeedback, setAppFeedback] = useState('');
 
-  const handleAction = (log: PendingLog, type: 'approve' | 'reject') => {
-    setSelectedLog(log);
-    setActionType(type);
-    setFeedback('');
+  const [evaluationStudentId, setEvaluationStudentId] = useState<string | null>(null);
+  const [evaluationComments, setEvaluationComments] = useState('');
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [dashRes, appsRes, reportsRes] = await Promise.all([
+        coordinatorService.getDashboard(),
+        coordinatorService.getApplications(),
+        coordinatorService.getReports(),
+      ]);
+
+      setStudents(dashRes.data.students || []);
+      setApplications(appsRes.data || []);
+      setReports(reportsRes.data.reports || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to retrieve coordinator data.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleConfirmAction = () => {
-    if (!selectedLog || !actionType) return;
-    
-    // Simulate removing the log from the pending queue
-    setPendingLogs(pendingLogs.filter((log) => log.id !== selectedLog.id));
-    
-    // Reset selection
-    setSelectedLog(null);
-    setActionType(null);
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Weekly Report Handlers
+  const handleOpenReportReview = (report: WeeklyReportData, action: 'approved' | 'rejected') => {
+    setSelectedReport(report);
+    setReportAction(action);
+    setReportFeedback('');
   };
+
+  const handleConfirmReportReview = async () => {
+    if (!selectedReport || !reportAction) return;
+    try {
+      await coordinatorService.evaluateReport({
+        reportId: selectedReport._id,
+        status: reportAction,
+        comments: reportFeedback,
+      });
+      setSelectedReport(null);
+      setReportAction(null);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to review weekly report');
+    }
+  };
+
+  // Application Handlers
+  const handleApproveApp = async (id: string) => {
+    try {
+      await coordinatorService.approveApplication(id);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve application');
+    }
+  };
+
+  const handleOpenRejectApp = (id: string) => {
+    const app = applications.find((a) => a._id === id);
+    if (app) {
+      setSelectedApp(app);
+      setAppFeedback('');
+    }
+  };
+
+  const handleConfirmRejectApp = async () => {
+    if (!selectedApp) return;
+    try {
+      await coordinatorService.rejectApplication(selectedApp._id, appFeedback);
+      setSelectedApp(null);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reject application');
+    }
+  };
+
+  // Final Student Evaluation Handlers
+  const handleOpenEvaluation = (studentId: string) => {
+    setEvaluationStudentId(studentId);
+    setEvaluationComments('');
+  };
+
+  const handleConfirmEvaluation = async () => {
+    if (!evaluationStudentId) return;
+    try {
+      await coordinatorService.submitFinalEvaluation(evaluationStudentId, evaluationComments);
+      setEvaluationStudentId(null);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit final evaluation');
+    }
+  };
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  // Count helper functions
+  const pendingReports = reports.filter((r) => r.status === 'pending');
+  const pendingApps = applications.filter((a) => a.status === 'pending');
 
   return (
     <Box className="anim-fade-in" sx={{ p: { xs: 2, md: 4 } }}>
@@ -111,8 +179,13 @@ export const CoordinatorDashboard: React.FC = () => {
           Coordinator Dashboard
         </Typography>
         <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
-          {user?.name} &bull; {user?.details?.title} &bull; {user?.details?.department}
+          Welcome back, Coordinator &bull; {user?.email}
         </Typography>
+        {error && (
+          <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+            {error}
+          </Typography>
+        )}
       </Box>
 
       {/* Grid of stats */}
@@ -120,7 +193,7 @@ export const CoordinatorDashboard: React.FC = () => {
         <Grid size={{ xs: 12, sm: 4 }}>
           <Card className="glass-panel" sx={{ borderLeft: '4px solid var(--primary) !important' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
-              <Box sx={{ p: 1.5, mr: 2.5, borderRadius: 'var(--border-radius-md)', background: 'var(--primary-glow)', color: 'var(--primary)' }}>
+              <Box sx={{ p: 1.5, mr: 2.5, borderRadius: 'var(--border-radius-md)', background: 'var(--primary-glow)', color: 'var(--primary)', display: 'flex' }}>
                 <PeopleIcon />
               </Box>
               <Box>
@@ -128,7 +201,7 @@ export const CoordinatorDashboard: React.FC = () => {
                   Assigned Students
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  128 Students
+                  {students.length} Students
                 </Typography>
               </Box>
             </CardContent>
@@ -137,15 +210,15 @@ export const CoordinatorDashboard: React.FC = () => {
         <Grid size={{ xs: 12, sm: 4 }}>
           <Card className="glass-panel" sx={{ borderLeft: '4px solid var(--secondary) !important' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
-              <Box sx={{ p: 1.5, mr: 2.5, borderRadius: 'var(--border-radius-md)', background: 'var(--secondary-glow)', color: 'var(--secondary)' }}>
+              <Box sx={{ p: 1.5, mr: 2.5, borderRadius: 'var(--border-radius-md)', background: 'var(--secondary-glow)', color: 'var(--secondary)', display: 'flex' }}>
                 <PendingActionsIcon />
               </Box>
               <Box>
                 <Typography variant="caption" sx={{ color: 'var(--text-muted)', display: 'block', mb: 0.5 }}>
                   Pending Weekly Logs
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: pendingLogs.length > 0 ? 'var(--warning)' : 'inherit' }}>
-                  {pendingLogs.length} Awaiting
+                <Typography variant="h5" sx={{ fontWeight: 700, color: pendingReports.length > 0 ? 'var(--warning)' : 'inherit' }}>
+                  {pendingReports.length} Awaiting
                 </Typography>
               </Box>
             </CardContent>
@@ -154,15 +227,15 @@ export const CoordinatorDashboard: React.FC = () => {
         <Grid size={{ xs: 12, sm: 4 }}>
           <Card className="glass-panel" sx={{ borderLeft: '4px solid var(--accent) !important' }}>
             <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3 }}>
-              <Box sx={{ p: 1.5, mr: 2.5, borderRadius: 'var(--border-radius-md)', background: 'var(--accent-glow)', color: 'var(--accent)' }}>
-                <ApartmentIcon />
+              <Box sx={{ p: 1.5, mr: 2.5, borderRadius: 'var(--border-radius-md)', background: 'var(--accent-glow)', color: 'var(--accent)', display: 'flex' }}>
+                <AssignmentIcon />
               </Box>
               <Box>
                 <Typography variant="caption" sx={{ color: 'var(--text-muted)', display: 'block', mb: 0.5 }}>
-                  Active Organizations
+                  Pending Applications
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  42 Partners
+                <Typography variant="h5" sx={{ fontWeight: 700, color: pendingApps.length > 0 ? 'var(--warning)' : 'inherit' }}>
+                  {pendingApps.length} Pending
                 </Typography>
               </Box>
             </CardContent>
@@ -170,161 +243,125 @@ export const CoordinatorDashboard: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Two sections layout: Pending log sheets and Student roster */}
-      <Grid container spacing={4}>
-        {/* Pending Log sheets queue */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'var(--font-display)', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            Pending Weekly Logs
-            {pendingLogs.length > 0 && <Chip label={`${pendingLogs.length} Action Needed`} size="small" color="warning" sx={{ fontWeight: 600, fontSize: '0.75rem' }} />}
-          </Typography>
+      {/* Tabs Menu */}
+      <Box sx={{ borderBottom: 1, borderColor: 'var(--border-color)', mb: 3 }}>
+        <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)} textColor="inherit" indicatorColor="primary">
+          <Tab label={`Students Roster (${students.length})`} sx={{ fontWeight: 600 }} />
+          <Tab label={`Weekly Logs (${pendingReports.length})`} sx={{ fontWeight: 600 }} />
+          <Tab label={`Applications (${pendingApps.length})`} sx={{ fontWeight: 600 }} />
+        </Tabs>
+      </Box>
 
-          {pendingLogs.length === 0 ? (
-            <Card sx={{ background: 'rgba(19, 27, 46, 0.2) !important', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)' }}>
-              <CardContent sx={{ py: 6, textCenter: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Tab Panels */}
+      {tabValue === 0 && (
+        <Grid container spacing={3}>
+          {students.length === 0 ? (
+            <Grid size={{ xs: 12 }}>
+              <Paper sx={{ p: 4, textAlignment: 'center', color: 'var(--text-muted)' }}>
+                No students currently assigned to you.
+              </Paper>
+            </Grid>
+          ) : (
+            students.map((student) => {
+              // Calculate approved weeks
+              const approvedCount = reports.filter((r) => r.student?._id === student._id && r.status === 'approved').length;
+              const totalHours = reports.filter((r) => r.student?._id === student._id && r.status === 'approved').reduce((acc, curr) => acc + curr.hoursLogged, 0);
+
+              return (
+                <Grid size={{ xs: 12, sm: 6 }} key={student._id}>
+                  <StudentCard
+                    student={student}
+                    approvedWeeksCount={approvedCount}
+                    totalHoursApproved={totalHours}
+                    onEvaluate={handleOpenEvaluation}
+                  />
+                </Grid>
+              );
+            })
+          )}
+        </Grid>
+      )}
+
+      {tabValue === 1 && (
+        <Grid container spacing={3}>
+          {pendingReports.length === 0 ? (
+            <Grid size={{ xs: 12 }}>
+              <Paper sx={{ p: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <CheckCircleIcon sx={{ fontSize: 48, color: 'var(--success)', mb: 2, opacity: 0.8 }} />
                 <Typography variant="body1" sx={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                  All clear! No pending logs to approve.
+                  Excellent! No weekly logs awaiting your approval.
                 </Typography>
-              </CardContent>
-            </Card>
+              </Paper>
+            </Grid>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {pendingLogs.map((log) => (
-                <Card key={log.id} sx={{ background: 'var(--bg-secondary) !important', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)' }}>
+            pendingReports.map((report) => (
+              <Grid size={{ xs: 12 }} key={report._id}>
+                <Card sx={{ background: 'var(--bg-secondary) !important', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-md)' }}>
                   <CardContent sx={{ p: 3 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
                       <Box>
                         <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {log.studentName}
+                          {report.student?.name}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                          ID: {log.studentId} &bull; Week {log.week} &bull; {log.hours} hours worked
+                          Week {report.weekNumber} &bull; {report.hoursLogged} hours logged &bull; Timeline: {new Date(report.startDate).toLocaleDateString()} - {new Date(report.endDate).toLocaleDateString()}
                         </Typography>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <Tooltip title="Approve Log">
-                          <IconButton onClick={() => handleAction(log, 'approve')} sx={{ color: 'var(--success)', background: 'rgba(16, 185, 129, 0.05)', '&:hover': { background: 'rgba(16, 185, 129, 0.15)' } }}>
+                          <IconButton onClick={() => handleOpenReportReview(report, 'approved')} sx={{ color: 'var(--success)', background: 'rgba(16, 185, 129, 0.05)', '&:hover': { background: 'rgba(16, 185, 129, 0.15)' } }}>
                             <CheckCircleIcon />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Reject & Feedback">
-                          <IconButton onClick={() => handleAction(log, 'reject')} sx={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.05)', '&:hover': { background: 'rgba(239, 68, 68, 0.15)' } }}>
+                        <Tooltip title="Reject Log">
+                          <IconButton onClick={() => handleOpenReportReview(report, 'rejected')} sx={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.05)', '&:hover': { background: 'rgba(239, 68, 68, 0.15)' } }}>
                             <CancelIcon />
                           </IconButton>
                         </Tooltip>
                       </Box>
                     </Box>
-                    <Box sx={{ background: 'rgba(0,0,0,0.15)', p: 2, borderRadius: 'var(--border-radius-sm)', mb: 1.5 }}>
+
+                    <Box sx={{ background: 'rgba(0,0,0,0.15)', p: 2, borderRadius: 'var(--border-radius-sm)' }}>
                       <Typography variant="caption" sx={{ color: 'var(--text-muted)', display: 'block', mb: 0.5, fontWeight: 600 }}>
-                        TASKS PERFORMED
+                        TASKS COMPLETED
                       </Typography>
                       <Typography variant="body2" sx={{ color: 'var(--text-primary)', mb: 1.5 }}>
-                        {log.tasks}
+                        {report.tasksCompleted}
                       </Typography>
-                      <Typography variant="caption" sx={{ color: 'var(--text-muted)', display: 'block', mb: 0.5, fontWeight: 600 }}>
-                        CHALLENGES ENCOUNTERED
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
-                        {log.challenges}
-                      </Typography>
+                      {report.challengesFaced && (
+                        <>
+                          <Typography variant="caption" sx={{ color: 'var(--text-muted)', display: 'block', mb: 0.5, fontWeight: 600 }}>
+                            CHALLENGES FACED
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
+                            {report.challengesFaced}
+                          </Typography>
+                        </>
+                      )}
                     </Box>
                   </CardContent>
                 </Card>
-              ))}
-            </Box>
+              </Grid>
+            ))
           )}
         </Grid>
+      )}
 
-        {/* Student Roster list */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'var(--font-display)', mb: 2 }}>
-            Student Progress Roster
-          </Typography>
+      {tabValue === 2 && (
+        <Box>
+          <ApplicationTable
+            applications={applications}
+            onApprove={handleApproveApp}
+            onReject={handleOpenRejectApp}
+            isCoordinator={true}
+          />
+        </Box>
+      )}
 
-          <TableContainer component={Paper} sx={{ borderRadius: 'var(--border-radius-md)', overflow: 'hidden' }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Student</TableCell>
-                  <TableCell>Assigned Company</TableCell>
-                  <TableCell>Weeks Approved</TableCell>
-                  <TableCell>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {students.map((student) => (
-                  <TableRow key={student.id} sx={{ '&:hover': { backgroundColor: 'rgba(255,255,255,0.02)' } }}>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {student.name}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'var(--text-muted)' }}>
-                        {student.studentId}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{student.company}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 45 }}>
-                          {student.weeksApproved}/16
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={(student.weeksApproved / 16) * 100}
-                          sx={{
-                            width: 60,
-                            height: 6,
-                            borderRadius: 3,
-                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                            '& .MuiLinearProgress-bar': {
-                              backgroundColor: student.weeksApproved === 16 ? 'var(--success)' : 'var(--primary)',
-                            },
-                          }}
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={student.status.replace('_', ' ').toUpperCase()}
-                        size="small"
-                        sx={{
-                          fontWeight: 600,
-                          fontSize: '0.65rem',
-                          backgroundColor:
-                            student.status === 'completed'
-                              ? 'var(--success-glow)'
-                              : student.status === 'on_hold'
-                              ? 'var(--danger-glow)'
-                              : 'var(--primary-glow)',
-                          color:
-                            student.status === 'completed'
-                              ? 'var(--success)'
-                              : student.status === 'on_hold'
-                              ? 'var(--danger)'
-                              : 'var(--primary)',
-                          border: `1px solid ${
-                            student.status === 'completed'
-                              ? 'rgba(16, 185, 129, 0.2)'
-                              : student.status === 'on_hold'
-                              ? 'rgba(239, 68, 68, 0.2)'
-                              : 'rgba(99, 102, 241, 0.2)'
-                          }`,
-                        }}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Grid>
-      </Grid>
-
-      {/* Confirmation & Feedback Dialog */}
+      {/* Weekly Report Review Dialog */}
       <Dialog
-        open={selectedLog !== null}
-        onClose={() => setSelectedLog(null)}
+        open={selectedReport !== null}
+        onClose={() => setSelectedReport(null)}
         slotProps={{
           paper: {
             sx: {
@@ -337,46 +374,162 @@ export const CoordinatorDashboard: React.FC = () => {
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'var(--font-display)', fontWeight: 700, borderBottom: '1px solid var(--border-color)' }}>
-          {actionType === 'approve' ? 'Approve Log Sheet' : 'Reject Log Sheet'}
+        <DialogTitle sx={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+          {reportAction === 'approved' ? 'Approve Log Sheet' : 'Reject Log Sheet'}
         </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
+        <DialogContent sx={{ pt: 2 }}>
           <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
-            Reviewing logsheet for <strong>{selectedLog?.studentName}</strong> (Week {selectedLog?.week}).
+            Adding feedback for <strong>{selectedReport?.student?.name}</strong> (Week {selectedReport?.weekNumber}).
           </Typography>
           <TextField
-            label="Feedback/Notes (Optional)"
+            label="Feedback Notes"
             multiline
             rows={3}
             fullWidth
             variant="outlined"
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            placeholder={actionType === 'approve' ? 'Optional comments or notes...' : 'Explain what details are missing or need modification...'}
+            value={reportFeedback}
+            onChange={(e) => setReportFeedback(e.target.value)}
+            placeholder={reportAction === 'approved' ? 'Well done, keep it up...' : 'Please specify what corrections or explanations are needed...'}
             slotProps={{
               input: { className: 'glass-input' },
               inputLabel: { style: { color: 'var(--text-secondary)' } },
             }}
           />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, pt: 2, borderTop: '1px solid var(--border-color)' }}>
-          <Button onClick={() => setSelectedLog(null)} sx={{ color: 'var(--text-secondary)' }}>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button onClick={() => setSelectedReport(null)} sx={{ color: 'var(--text-secondary)' }}>
             Cancel
           </Button>
           <Button
-            onClick={handleConfirmAction}
+            onClick={handleConfirmReportReview}
             variant="contained"
-            color={actionType === 'approve' ? 'success' : 'error'}
+            color={reportAction === 'approved' ? 'success' : 'error'}
             sx={{
-              backgroundColor: actionType === 'approve' ? 'var(--success) !important' : 'var(--danger) !important',
+              backgroundColor: reportAction === 'approved' ? 'var(--success) !important' : 'var(--danger) !important',
               color: '#fff !important',
             }}
           >
-            Confirm {actionType === 'approve' ? 'Approval' : 'Rejection'}
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Application Rejection Dialog */}
+      <Dialog
+        open={selectedApp !== null}
+        onClose={() => setSelectedApp(null)}
+        slotProps={{
+          paper: {
+            sx: {
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--border-radius-lg)',
+              width: '100%',
+              maxWidth: '450px',
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+          Reject Internship Application
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
+            Reject application for student <strong>{selectedApp?.student?.name}</strong> applying to <strong>{selectedApp?.internship?.title}</strong>.
+          </Typography>
+          <TextField
+            label="Rejection Reason / Feedback"
+            multiline
+            rows={3}
+            fullWidth
+            variant="outlined"
+            value={appFeedback}
+            onChange={(e) => setAppFeedback(e.target.value)}
+            required
+            placeholder="Explain why this application is not suitable..."
+            slotProps={{
+              input: { className: 'glass-input' },
+              inputLabel: { style: { color: 'var(--text-secondary)' } },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button onClick={() => setSelectedApp(null)} sx={{ color: 'var(--text-secondary)' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmRejectApp}
+            variant="contained"
+            color="error"
+            disabled={!appFeedback.trim()}
+            sx={{
+              backgroundColor: 'var(--danger) !important',
+              color: '#fff !important',
+            }}
+          >
+            Confirm Rejection
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Student Evaluation Dialog */}
+      <Dialog
+        open={evaluationStudentId !== null}
+        onClose={() => setEvaluationStudentId(null)}
+        slotProps={{
+          paper: {
+            sx: {
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--border-radius-lg)',
+              width: '100%',
+              maxWidth: '500px',
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+          Submit Student Final Evaluation
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 3 }}>
+            Evaluate overall student performance and compile the final grade. Submitting this final evaluation will mark the student's internship as <strong>Completed</strong>.
+          </Typography>
+          <TextField
+            label="Evaluation Comments & Grades"
+            multiline
+            rows={5}
+            fullWidth
+            variant="outlined"
+            value={evaluationComments}
+            onChange={(e) => setEvaluationComments(e.target.value)}
+            required
+            placeholder="Type comprehensive remarks covering attendance, technical output, teamwork, etc..."
+            slotProps={{
+              input: { className: 'glass-input' },
+              inputLabel: { style: { color: 'var(--text-secondary)' } },
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
+          <Button onClick={() => setEvaluationStudentId(null)} sx={{ color: 'var(--text-secondary)' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmEvaluation}
+            variant="contained"
+            disabled={!evaluationComments.trim()}
+            sx={{
+              background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important',
+              color: '#fff !important',
+            }}
+          >
+            Submit Final Evaluation
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 };
+
 export default CoordinatorDashboard;

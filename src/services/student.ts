@@ -10,29 +10,64 @@ export const studentService = {
       body: profileData,
     });
   },
+  getInternships: async (search?: string) => {
+    return apiClient(`/students/internships${search ? `?search=${encodeURIComponent(search)}` : ''}`);
+  },
   applyInternship: async (application: { internshipId: string; coverLetter: string }) => {
-    return apiClient('/students/applications', {
+    return apiClient('/students/apply', {
       method: 'POST',
       body: application,
     });
   },
-  uploadResume: async (formData: FormData) => {
-    return apiClient('/students/documents', {
+  getApplications: async () => {
+    return apiClient('/students/applications');
+  },
+  withdrawApplication: async (id: string) => {
+    return apiClient(`/students/application/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  submitLogsheet: async (report: {
+    weekNumber: number;
+    startDate: string;
+    endDate: string;
+    tasksCompleted: string;
+    challengesFaced?: string;
+    hoursLogged: number;
+  }) => {
+    return apiClient('/students/report', {
+      method: 'POST',
+      body: report,
+    });
+  },
+  updateLogsheet: async (
+    id: string,
+    report: {
+      startDate?: string;
+      endDate?: string;
+      tasksCompleted?: string;
+      challengesFaced?: string;
+      hoursLogged?: number;
+    }
+  ) => {
+    return apiClient(`/students/report/${id}`, {
+      method: 'PUT',
+      body: report,
+    });
+  },
+  uploadDocument: async (formData: FormData) => {
+    return apiClient('/upload', {
       method: 'POST',
       headers: {
-        // Fetch automatically configures boundary if headers are empty, so we do not hardcode content-type for multipart
         'Content-Type': 'multipart/form-data',
       },
       body: formData,
     });
   },
-  submitLogsheet: async (report: { weekNumber: number; tasksCompleted: string; hoursLogged: number; challengesFaced?: string }) => {
-    return apiClient('/students/reports', {
-      method: 'POST',
-      body: report,
-    });
+  getReports: async () => {
+    return apiClient('/students/reports');
   },
-  getApplications: async () => {
-    return apiClient('/students/applications');
+  getDocuments: async () => {
+    return apiClient('/students/documents');
   },
 };
