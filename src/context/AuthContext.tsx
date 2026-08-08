@@ -140,7 +140,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await login(creds.email, creds.password);
       } catch (regErr) {
         console.error(`Failed to sandbox switch to role ${role}:`, regErr);
-        throw regErr;
+        console.warn(`Backend connection failed. Falling back to local offline mock login for role: ${role}`);
+        
+        const mockUser: User = {
+          id: `mock_${role}_id`,
+          name: `Sandbox ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+          email: creds.email,
+          role: role,
+          details: {
+            studentId: role === 'student' ? 'SANDBOX_STU' : undefined,
+            department: (role === 'student' || role === 'coordinator') ? 'Computer Science' : undefined,
+            organizationName: role === 'organization' ? 'Sandbox Org' : undefined,
+            title: role === 'coordinator' ? 'Faculty Coordinator' : role === 'admin' ? 'System Administrator' : role === 'organization' ? 'HR Manager' : undefined,
+          }
+        };
+
+        localStorage.setItem('simp_token', 'mock_jwt_token_for_development');
+        localStorage.setItem('simp_refresh_token', 'mock_refresh_token');
+        localStorage.setItem('simp_user', JSON.stringify(mockUser));
+        setUser(mockUser);
       }
     }
   };
