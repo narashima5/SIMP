@@ -118,6 +118,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Quick environment role switcher (for development & testing)
   const switchRole = async (role: UserRole) => {
     const creds = testAccounts[role];
+    
+    // For development/sandbox purposes: perform instant local login without using authentication/network
+    const mockUser: User = {
+      id: `mock_${role}_id`,
+      name: `Sandbox ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+      email: creds.email,
+      role: role,
+      details: {
+        studentId: role === 'student' ? 'SANDBOX_STU' : undefined,
+        department: (role === 'student' || role === 'coordinator') ? 'Computer Science' : undefined,
+        organizationName: role === 'organization' ? 'Sandbox Org' : undefined,
+        title: role === 'coordinator' ? 'Faculty Coordinator' : role === 'admin' ? 'System Administrator' : role === 'organization' ? 'HR Manager' : undefined,
+      }
+    };
+
+    localStorage.setItem('simp_token', 'mock_jwt_token_for_development');
+    localStorage.setItem('simp_refresh_token', 'mock_refresh_token');
+    localStorage.setItem('simp_user', JSON.stringify(mockUser));
+    setUser(mockUser);
+
+    /* Original code kept intact:
     try {
       await login(creds.email, creds.password);
     } catch (err) {
@@ -161,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(mockUser);
       }
     }
+    */
   };
 
   return (
