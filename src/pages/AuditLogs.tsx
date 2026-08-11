@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Box, Typography, Grid, Card, Chip, TextField, InputAdornment,
-  FormControl, Select, MenuItem, Divider,
+  FormControl, Select, MenuItem,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import LoginIcon from '@mui/icons-material/Login';

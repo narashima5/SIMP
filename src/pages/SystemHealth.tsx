@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Box, Typography, Grid, Card, CardContent, Chip, LinearProgress, Divider,
+  Box, Typography, Grid, Card, Chip, LinearProgress,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';

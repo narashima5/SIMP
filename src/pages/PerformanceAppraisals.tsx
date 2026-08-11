@@ -85,7 +85,6 @@ const PerformanceAppraisals: React.FC = () => {
     ? (submitted.reduce((a, e) => a + e.rating, 0) / submitted.length).toFixed(1)
     : '–';
 
-  const list = tab === 0 ? submitted : pending;
 
   return (
     <Box className="anim-fade-in" sx={{ p: { xs: 2, md: 4 } }}>

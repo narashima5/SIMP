@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import {
-  Box, Typography, Grid, Card, CardContent, TextField, Chip,
+  Box, Typography, Grid, Card, TextField, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, LinearProgress, InputAdornment, FormControl, Select, MenuItem,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import PendingIcon from '@mui/icons-material/Pending';
-import { mockCoordinatorDashboard, mockCoordinatorReports } from '@/services/mockData';
-
-type Student = typeof mockCoordinatorDashboard.students[0];
+import { mockCoordinatorDashboard } from '@/services/mockData';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   placed:       { label: 'Placed',     color: 'var(--success)', bg: 'rgba(16,185,129,0.1)' },
@@ -21,19 +16,10 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 };
 
 const StudentRoster: React.FC = () => {
-  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const students = mockCoordinatorDashboard.students;
-
-  const getApprovedWeeks = (studentId: string) =>
-    mockCoordinatorReports.filter((r) => r.student?.name && r.status === 'approved').length;
-
-  const getHoursLogged = (studentId: string) =>
-    mockCoordinatorReports
-      .filter((r) => r.student?.name && r.status === 'approved')
-      .reduce((acc, r) => acc + r.hoursLogged, 0);
 
   const filtered = students.filter((s) => {
     const matchSearch =

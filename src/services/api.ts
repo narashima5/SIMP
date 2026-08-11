@@ -13,7 +13,6 @@ import {
   mockAdminUsers,
   mockAdminInternships,
   mockAdminApplications,
-  mockAdminReports,
   mockAdminStats,
   mockNotifications,
   mockInternshipListings,

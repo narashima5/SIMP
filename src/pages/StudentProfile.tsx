@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import {
-  Box, Typography, Grid, Card, CardContent, Button, TextField,
+  Box, Typography, Grid, Card, Button, TextField,
   Chip, Avatar, Divider, LinearProgress, Dialog, DialogTitle,
   DialogContent, DialogActions,
 } from '@mui/material';
@@ -41,7 +41,7 @@ const completionItems = [
 ];
 
 const StudentProfile: React.FC = () => {
-  const { user, logout } = useAuth();
+  useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState({ phone: mockProfile.phone, bio: mockProfile.bio, skills: mockProfile.skills.join(', ') });
   const [profile, setProfile] = useState(mockProfile);
