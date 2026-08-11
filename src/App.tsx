@@ -11,12 +11,18 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import InternshipListing from '@/pages/InternshipListing';
 import ApplicationDetails from '@/pages/ApplicationDetails';
 import ProgressReport from '@/pages/ProgressReport';
+import StudentProfile from '@/pages/StudentProfile';
+import StudentRoster from '@/pages/StudentRoster';
+import PartnerListings from '@/pages/PartnerListings';
+import PlacedInterns from '@/pages/PlacedInterns';
+import PerformanceAppraisals from '@/pages/PerformanceAppraisals';
+import UserRegistry from '@/pages/UserRegistry';
+import SystemHealth from '@/pages/SystemHealth';
+import AuditLogs from '@/pages/AuditLogs';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Unauthorized from '@/pages/Unauthorized';
 import NotFound from '@/pages/NotFound';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Box, Card, CardContent, Typography } from '@mui/material';
-import InfoIcon from '@mui/icons-material/Info';
 
 // Route wrapper to handle redirect if user is already logged in
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -47,24 +53,6 @@ const RoleDashboardRouter: React.FC = () => {
   }
 };
 
-// Mock page component for subroutes
-const MockPage: React.FC<{ title: string }> = ({ title }) => {
-  return (
-    <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 140px)' }}>
-      <Card sx={{ maxWidth: 500, width: '100%', background: 'rgba(19, 27, 46, 0.4) !important', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-lg)', textAlign: 'center', p: 4 }}>
-        <CardContent>
-          <InfoIcon sx={{ fontSize: 56, color: 'var(--primary)', mb: 2 }} />
-          <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'var(--font-display)', mb: 1.5 }}>
-            {title} Page
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            This section is part of the development setup layout for the Smart Internship Management Platform. In a production environment, this page will render live databases and forms matching your credentials.
-          </Typography>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-};
 
 function App() {
   return (
@@ -122,7 +110,7 @@ function App() {
             path="profile"
             element={
               <ProtectedRoute allowedRoles={['student']}>
-                <MockPage title="Student Profile & Settings" />
+                <StudentProfile />
               </ProtectedRoute>
             }
           />
@@ -140,7 +128,7 @@ function App() {
             path="roster"
             element={
               <ProtectedRoute allowedRoles={['coordinator']}>
-                <MockPage title="Student Academic Roster" />
+                <StudentRoster />
               </ProtectedRoute>
             }
           />
@@ -148,7 +136,7 @@ function App() {
             path="partners"
             element={
               <ProtectedRoute allowedRoles={['coordinator']}>
-                <MockPage title="Corporate Partner Listings" />
+                <PartnerListings />
               </ProtectedRoute>
             }
           />
@@ -158,7 +146,7 @@ function App() {
             path="interns"
             element={
               <ProtectedRoute allowedRoles={['organization']}>
-                <MockPage title="Placed Student Interns" />
+                <PlacedInterns />
               </ProtectedRoute>
             }
           />
@@ -174,7 +162,7 @@ function App() {
             path="evaluations"
             element={
               <ProtectedRoute allowedRoles={['organization', 'coordinator']}>
-                <MockPage title="Intern Performance Appraisals" />
+                <PerformanceAppraisals />
               </ProtectedRoute>
             }
           />
@@ -194,7 +182,7 @@ function App() {
             path="users"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <MockPage title="User Accounts Registry" />
+                <UserRegistry />
               </ProtectedRoute>
             }
           />
@@ -202,7 +190,7 @@ function App() {
             path="system"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <MockPage title="Platform Infrastructure Health" />
+                <SystemHealth />
               </ProtectedRoute>
             }
           />
@@ -210,7 +198,7 @@ function App() {
             path="audit"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <MockPage title="Platform Security Audits" />
+                <AuditLogs />
               </ProtectedRoute>
             }
           />
